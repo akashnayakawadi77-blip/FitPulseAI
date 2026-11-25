@@ -2,23 +2,26 @@ package com.fitpulse.ai.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Fitness Gym Brand Colors
-val NeonGreen = Color(0xFF00E676)
-val NeonGreenDark = Color(0xFF00B050)
+// Modern Obsidian & Electric Accent Palette
+val NeonGreen = Color(0xFF2EFF8E)
+val NeonGreenDark = Color(0xFF00C853)
 val ElectricCyan = Color(0xFF00E5FF)
-val EnergeticAmber = Color(0xFFFFAB00)
-val FireOrange = Color(0xFFFF5722)
+val ElectricViolet = Color(0xFFA855F7)
+val EnergeticAmber = Color(0xFFFFAB2E)
+val FireOrange = Color(0xFFFF6D3B)
 
-// Dark Gym Surfaces
-val GymDarkBackground = Color(0xFF0D1117)
-val GymDarkSurface = Color(0xFF161B22)
-val GymDarkCard = Color(0xFF21262D)
-val GymDarkBorder = Color(0xFF30363D)
+// Obsidian Glass Surfaces
+val GymDarkBackground = Color(0xFF070A0F)
+val GymDarkSurface = Color(0xFF111622)
+val GymDarkSurfaceElevated = Color(0xFF171E2E)
+val GymDarkCard = Color(0xFF1B2336)
+val GymDarkBorder = Color(0x18FFFFFF)
+val GlassBorderHighlight = Color(0x28FFFFFF)
 
 // Text & Accents
-val TextPrimary = Color(0xFFF0F6FC)
-val TextSecondary = Color(0xFF8B949E)
-val TextAccent = Color(0xFF58A6FF)
+val TextPrimary = Color(0xFFF5F8FF)
+val TextSecondary = Color(0xFF94A3B8)
+val TextAccent = Color(0xFF38BDF8)
 
 // Material Theme Mappings
 val primaryDark = NeonGreen

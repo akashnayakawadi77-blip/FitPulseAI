@@ -28,6 +28,8 @@ import com.fitpulse.ai.data.FoodCatalog
 import com.fitpulse.ai.data.model.FoodCatalogItem
 import com.fitpulse.ai.data.model.LoggedFoodItem
 import com.fitpulse.ai.data.model.MealPlanItem
+import com.fitpulse.ai.ui.components.AnimatedCircularScoreRing
+import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.theme.*
 import kotlin.math.roundToInt
 
@@ -100,11 +102,10 @@ fun NutritionScreen(
             ) {
                 // Calorie & Macronutrient Summary Card
                 item {
-                    Card(
+                    GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
-                        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                        accentGlow = EnergeticAmber,
+                        borderColor = EnergeticAmber.copy(alpha = 0.28f)
                     ) {
                         Column(modifier = Modifier.padding(18.dp)) {
                             Row(
@@ -113,45 +114,45 @@ fun NutritionScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Today's Calories", color = Color.Gray, fontSize = 13.sp)
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = EnergeticAmber.copy(alpha = 0.14f)
+                                    ) {
+                                        Text(
+                                            text = "DAILY FUEL",
+                                            color = EnergeticAmber,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
                                             text = "$loggedCalories",
-                                            color = NeonGreen,
+                                            color = TextPrimary,
                                             fontWeight = FontWeight.Black,
-                                            fontSize = 28.sp
+                                            fontSize = 32.sp
                                         )
                                         Text(
                                             text = " / ${plan.dailyCalories} kcal",
-                                            color = Color.Gray,
+                                            color = TextSecondary,
                                             fontSize = 14.sp,
-                                            modifier = Modifier.padding(bottom = 4.dp)
+                                            modifier = Modifier.padding(bottom = 5.dp)
                                         )
                                     }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .background(NeonGreen.copy(alpha = 0.15f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = NeonGreen)
-                                }
+                                AnimatedCircularScoreRing(
+                                    progress = calProgress,
+                                    scoreText = "${(calProgress * 100).toInt()}%",
+                                    subText = "KCAL",
+                                    size = 76.dp,
+                                    strokeWidth = 7.dp
+                                )
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            LinearProgressIndicator(
-                                progress = { calProgress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(4.dp)),
-                                color = NeonGreen,
-                                trackColor = GymDarkCard
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

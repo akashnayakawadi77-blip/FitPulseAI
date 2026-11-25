@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
 import com.fitpulse.ai.data.model.Exercise
+import com.fitpulse.ai.ui.components.GlassCard
+import com.fitpulse.ai.ui.components.GradientPrimaryButton
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
 import com.fitpulse.ai.ui.components.RestTimerOverlay
 import com.fitpulse.ai.ui.theme.*
@@ -78,19 +80,23 @@ fun WorkoutScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(workoutDays) { idx, day ->
+                    itemsIndexed(workoutDays) { idx, _ ->
                         val isSelected = idx == selectedDayIndex
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) NeonGreen else GymDarkSurface,
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSelected) NeonGreen else GymDarkSurfaceElevated,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isSelected) NeonGreen else GymDarkBorder
+                            ),
                             modifier = Modifier.clickable { repository.selectWorkoutDay(idx) }
                         ) {
                             Text(
                                 text = "Day ${idx + 1}",
-                                color = if (isSelected) Color.Black else Color.LightGray,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                fontSize = 14.sp
+                                color = if (isSelected) Color(0xFF041009) else TextSecondary,
+                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
+                                fontSize = 13.sp
                             )
                         }
                     }
@@ -99,12 +105,13 @@ fun WorkoutScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Progress Banner Card
-                Card(
+                GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = GymDarkSurface)
+                    cornerRadius = 20.dp,
+                    accentGlow = NeonGreen,
+                    borderColor = NeonGreen.copy(alpha = 0.25f)
                 ) {
                     Row(
                         modifier = Modifier
@@ -204,18 +211,14 @@ fun WorkoutScreen(
                             }
                             Spacer(modifier = Modifier.height(10.dp))
                         }
-                        Button(
+                        GradientPrimaryButton(
+                            text = "Finish & Save Workout Session",
                             onClick = { showFinishDialog = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
-                        ) {
-                            Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Finish & Save Workout Session", fontWeight = FontWeight.Black, fontSize = 15.sp)
-                        }
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Color(0xFF041009), modifier = Modifier.size(20.dp))
+                            }
+                        )
                     }
 
                     item {

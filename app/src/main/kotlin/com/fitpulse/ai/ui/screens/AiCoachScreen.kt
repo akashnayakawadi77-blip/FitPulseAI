@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
 import com.fitpulse.ai.data.model.FitnessGoal
 import com.fitpulse.ai.data.model.WorkoutEnvironment
+import com.fitpulse.ai.ui.components.GlassCard
+import com.fitpulse.ai.ui.components.GradientPrimaryButton
 import com.fitpulse.ai.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -94,59 +97,54 @@ fun AiCoachScreen(
         ) {
             // AI Plan Generator Card
             item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                    accentGlow = NeonGreen,
+                    borderColor = NeonGreen.copy(alpha = 0.25f)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
-                                    .background(NeonGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                    .size(40.dp)
+                                    .background(NeonGreen.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = NeonGreen)
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Personalized Routine Generator", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
-                                Text("Tailored to ${userProfile.fitnessGoal.displayName} • ${userProfile.workoutEnvironment.displayName}", color = Color.Gray, fontSize = 12.sp)
+                                Text("Personalized Routine Generator", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp)
+                                Text("Tailored to ${userProfile.fitnessGoal.displayName} • ${userProfile.workoutEnvironment.displayName}", color = TextSecondary, fontSize = 12.sp)
                             }
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        Button(
+                        GradientPrimaryButton(
+                            text = if (isGenerating) "Designing Custom Routine..." else "Generate Fresh AI Plan",
                             onClick = {
                                 coroutineScope.launch {
                                     repository.generateNewPlan()
                                 }
                             },
                             enabled = !isGenerating,
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (isGenerating) {
-                                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text("Designing Custom Routine...", color = Color.Black, fontWeight = FontWeight.Bold)
-                            } else {
-                                Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Generate Fresh AI Plan", color = Color.Black, fontWeight = FontWeight.Bold)
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                if (isGenerating) {
+                                    CircularProgressIndicator(color = Color(0xFF041009), modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFF041009), modifier = Modifier.size(18.dp))
+                                }
                             }
-                        }
+                        )
                     }
                 }
             }
 
             // Quick Question Chips
             item {
-                Text("Quick Inquiries", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Quick Inquiries", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(quickQuestions) { question ->
@@ -157,8 +155,8 @@ fun AiCoachScreen(
                                 }
                             },
                             shape = RoundedCornerShape(20.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder)),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = GymDarkSurface)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GymDarkBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = GymDarkSurfaceElevated)
                         ) {
                             Text(question, color = ElectricCyan, fontSize = 12.sp)
                         }
@@ -251,7 +249,7 @@ fun AiCoachScreen(
                         .size(46.dp)
                         .background(NeonGreen, CircleShape)
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.Black, modifier = Modifier.size(20.dp))
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black, modifier = Modifier.size(20.dp))
                 }
             }
         }
