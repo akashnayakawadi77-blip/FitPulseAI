@@ -153,6 +153,15 @@ class LocalDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null,
         return runCatching { json.decodeFromString<ReminderSettings>(raw) }.getOrDefault(ReminderSettings())
     }
 
+    fun saveTransformationPhotos(photos: TransformationPhotos) {
+        putString("transformation_photos", json.encodeToString(photos))
+    }
+
+    fun loadTransformationPhotos(): TransformationPhotos {
+        val raw = getString("transformation_photos") ?: return TransformationPhotos()
+        return runCatching { json.decodeFromString<TransformationPhotos>(raw) }.getOrDefault(TransformationPhotos())
+    }
+
     fun saveDailySteps(dateKey: String, steps: Int) {
         putString("steps_$dateKey", steps.toString())
     }

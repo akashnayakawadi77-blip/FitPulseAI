@@ -74,7 +74,6 @@ fun MainScreen(
                 ) {
                     BottomTab.entries.forEach { tab ->
                         val isSelected = selectedTab == tab
-                        val interactionSource = remember { MutableInteractionSource() }
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -91,11 +90,8 @@ fun MainScreen(
                                         Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
                                     }
                                 )
-                                .clickable(
-                                    interactionSource = interactionSource,
-                                    indication = null
-                                ) { selectedTab = tab }
-                                .padding(vertical = 8.dp),
+                                .clickable { selectedTab = tab }
+                                .padding(vertical = 9.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
@@ -124,24 +120,18 @@ fun MainScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding())
                 .statusBarsPadding()
         ) {
-            Crossfade(
-                targetState = selectedTab,
-                animationSpec = tween(200),
-                label = "tabCrossfade"
-            ) { tab ->
-                when (tab) {
-                    BottomTab.HOME -> HomeScreen(
-                        repository = repository,
-                        onStartWorkout = { selectedTab = BottomTab.WORKOUT },
-                        onConsultCoach = { selectedTab = BottomTab.COACH },
-                        onOpenProfile = onOpenProfile,
-                        onOpenNutrition = { selectedTab = BottomTab.NUTRITION }
-                    )
-                    BottomTab.WORKOUT -> WorkoutScreen(repository = repository)
-                    BottomTab.NUTRITION -> NutritionScreen(repository = repository)
-                    BottomTab.COACH -> AiCoachScreen(repository = repository)
-                    BottomTab.PROGRESS -> ProgressScreen(repository = repository)
-                }
+            when (selectedTab) {
+                BottomTab.HOME -> HomeScreen(
+                    repository = repository,
+                    onStartWorkout = { selectedTab = BottomTab.WORKOUT },
+                    onConsultCoach = { selectedTab = BottomTab.COACH },
+                    onOpenProfile = onOpenProfile,
+                    onOpenNutrition = { selectedTab = BottomTab.NUTRITION }
+                )
+                BottomTab.WORKOUT -> WorkoutScreen(repository = repository)
+                BottomTab.NUTRITION -> NutritionScreen(repository = repository)
+                BottomTab.COACH -> AiCoachScreen(repository = repository)
+                BottomTab.PROGRESS -> ProgressScreen(repository = repository)
             }
         }
     }

@@ -3,9 +3,12 @@ package com.fitpulse.ai.ui.screens
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,18 +22,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
+import com.fitpulse.ai.data.ImageStorageHelper
 import com.fitpulse.ai.data.ReminderScheduler
 import com.fitpulse.ai.data.model.FitnessGoal
 import com.fitpulse.ai.data.model.FitnessLevel
 import com.fitpulse.ai.data.model.UserProfile
 import com.fitpulse.ai.data.model.WorkoutEnvironment
+import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
 import com.fitpulse.ai.ui.theme.*
 
@@ -54,6 +61,17 @@ fun ProfileScreen(
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ -> }
+
+    val profilePhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val savedPath = ImageStorageHelper.saveImageFromUri(context, uri, "profile")
+            if (savedPath != null) {
+                repository.updateProfilePhoto(savedPath)
+            }
+        }
+    }
 
     val heightM = userProfile.heightCm / 100f
     val bmi = if (heightM > 0) userProfile.weightKg / (heightM * heightM) else 0f
@@ -118,39 +136,82 @@ fun ProfileScreen(
         ) {
             // Profile Summary Header Card
             item {
-                Card(
+                val profileBitmap = remember(userProfile.profilePhotoPath) {
+                    ImageStorageHelper.loadImageBitmap(userProfile.profilePhotoPath)
+                }
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                    accentGlow = NeonGreen,
+                    borderColor = NeonGreen.copy(alpha = 0.25f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(18.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(72.dp)
-                                .background(NeonGreen.copy(alpha = 0.2f), CircleShape)
-                                .border(2.dp, NeonGreen, CircleShape),
+                                .size(92.dp)
+                                .clickable {
+                                    profilePhotoPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(40.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(88.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonGreen.copy(alpha = 0.18f))
+                                    .border(2.dp, NeonGreen, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (profileBitmap != null) {
+                                    Image(
+                                        bitmap = profileBitmap,
+                                        contentDescription = "Profile Photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(44.dp))
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(28.dp)
+                                    .background(ElectricCyan, CircleShape)
+                                    .border(2.dp, GymDarkBackground, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = "Upload Photo", tint = Color.Black, modifier = Modifier.size(15.dp))
+                            }
                         }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (profileBitmap != null) "Tap photo to change" else "Tap to upload your photo",
+                            color = ElectricCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
 
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
                             text = userProfile.name,
                             fontWeight = FontWeight.Black,
-                            fontSize = 20.sp,
-                            color = Color.White
+                            fontSize = 21.sp,
+                            color = TextPrimary
                         )
 
                         Text(
                             text = "${userProfile.fitnessLevel.displayName} • ${userProfile.age} yrs old",
                             fontSize = 13.sp,
-                            color = Color.Gray
+                            color = TextSecondary
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))

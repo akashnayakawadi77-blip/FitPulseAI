@@ -1,5 +1,6 @@
 package com.fitpulse.ai.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,10 +19,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
+import com.fitpulse.ai.data.ImageStorageHelper
 import com.fitpulse.ai.ui.components.AnimatedCircularScoreRing
 import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.components.GradientPrimaryButton
@@ -95,6 +98,9 @@ fun HomeScreen(
                         )
                     }
 
+                    val profileBitmap = remember(userProfile.profilePhotoPath) {
+                        ImageStorageHelper.loadImageBitmap(userProfile.profilePhotoPath)
+                    }
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -104,16 +110,25 @@ fun HomeScreen(
                                     listOf(NeonGreen.copy(alpha = 0.22f), ElectricCyan.copy(alpha = 0.14f))
                                 )
                             )
-                            .border(1.dp, NeonGreen.copy(alpha = 0.6f), CircleShape)
+                            .border(1.5.dp, NeonGreen.copy(alpha = 0.7f), CircleShape)
                             .clickable { onOpenProfile() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile & Settings",
-                            tint = NeonGreen,
-                            modifier = Modifier.size(21.dp)
-                        )
+                        if (profileBitmap != null) {
+                            Image(
+                                bitmap = profileBitmap,
+                                contentDescription = "Profile Photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile & Settings",
+                                tint = NeonGreen,
+                                modifier = Modifier.size(21.dp)
+                            )
+                        }
                     }
                 }
             }

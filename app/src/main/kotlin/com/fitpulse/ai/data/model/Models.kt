@@ -35,7 +35,18 @@ data class UserProfile(
     val workoutEnvironment: WorkoutEnvironment = WorkoutEnvironment.FULL_GYM,
     val daysPerWeek: Int = 4,
     val geminiApiKey: String = "",
-    val onboardingCompleted: Boolean = false
+    val onboardingCompleted: Boolean = false,
+    val profilePhotoPath: String = ""
+)
+
+@Serializable
+data class TransformationPhotos(
+    val beforePhotoPath: String = "",
+    val beforeDate: String = "",
+    val beforeWeightKg: Float = 0f,
+    val afterPhotoPath: String = "",
+    val afterDate: String = "",
+    val afterWeightKg: Float = 0f
 )
 
 @Serializable

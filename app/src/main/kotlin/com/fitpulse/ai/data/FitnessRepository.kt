@@ -56,6 +56,9 @@ class FitnessRepository(private val context: Context? = null) {
     private val _reminderSettings = MutableStateFlow(ReminderSettings())
     val reminderSettings: StateFlow<ReminderSettings> = _reminderSettings.asStateFlow()
 
+    private val _transformationPhotos = MutableStateFlow(TransformationPhotos())
+    val transformationPhotos: StateFlow<TransformationPhotos> = _transformationPhotos.asStateFlow()
+
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
@@ -123,6 +126,7 @@ class FitnessRepository(private val context: Context? = null) {
         _workoutSessions.value = db?.loadWorkoutSessions().orEmpty()
         _loggedFoods.value = db?.loadLoggedFoodsForDate(today).orEmpty()
         _reminderSettings.value = db?.loadReminderSettings() ?: ReminderSettings()
+        _transformationPhotos.value = db?.loadTransformationPhotos() ?: TransformationPhotos()
 
         // Handle daily rollover for water & steps
         val lastDate = db?.loadLastActiveDate()
@@ -437,6 +441,33 @@ class FitnessRepository(private val context: Context? = null) {
     fun updateReminderSettings(settings: ReminderSettings) {
         _reminderSettings.value = settings
         db?.saveReminderSettings(settings)
+    }
+
+    fun updateProfilePhoto(path: String) {
+        _userProfile.update { it.copy(profilePhotoPath = path) }
+        db?.saveUserProfile(_userProfile.value)
+    }
+
+    fun updateBeforePhoto(path: String) {
+        val dateStr = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())
+        val updated = _transformationPhotos.value.copy(
+            beforePhotoPath = path,
+            beforeDate = dateStr,
+            beforeWeightKg = _userProfile.value.weightKg
+        )
+        _transformationPhotos.value = updated
+        db?.saveTransformationPhotos(updated)
+    }
+
+    fun updateAfterPhoto(path: String) {
+        val dateStr = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())
+        val updated = _transformationPhotos.value.copy(
+            afterPhotoPath = path,
+            afterDate = dateStr,
+            afterWeightKg = _userProfile.value.weightKg
+        )
+        _transformationPhotos.value = updated
+        db?.saveTransformationPhotos(updated)
     }
 
     suspend fun generateNewPlan() {

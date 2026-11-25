@@ -1,9 +1,14 @@
 package com.fitpulse.ai.ui.screens
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,19 +21,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.fitpulse.ai.data.FitnessRepository
+import com.fitpulse.ai.data.ImageStorageHelper
+import com.fitpulse.ai.data.model.TransformationPhotos
 import com.fitpulse.ai.data.model.WeightLogEntry
+import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
 import com.fitpulse.ai.ui.theme.*
 import java.text.SimpleDateFormat
@@ -45,9 +56,31 @@ fun ProgressScreen(
     val weightLogs by repository.weightLogs.collectAsState()
     val workoutSessions by repository.workoutSessions.collectAsState()
     val userProfile by repository.userProfile.collectAsState()
+    val transformationPhotos by repository.transformationPhotos.collectAsState()
 
     var showLogWeightDialog by remember { mutableStateOf(false) }
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
+    var previewPhotoPath by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    val beforePhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            ImageStorageHelper.saveImageFromUri(context, uri, "before")?.let { path ->
+                repository.updateBeforePhoto(path)
+            }
+        }
+    }
+
+    val afterPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            ImageStorageHelper.saveImageFromUri(context, uri, "after")?.let { path ->
+                repository.updateAfterPhoto(path)
+            }
+        }
+    }
 
     val heightM = userProfile.heightCm / 100f
     val bmi = if (heightM > 0) userProfile.weightKg / (heightM * heightM) else 0f
@@ -86,6 +119,22 @@ fun ProgressScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Section 0: Before & After Transformation Photos
+            item {
+                TransformationPhotosCard(
+                    photos = transformationPhotos,
+                    onPickBefore = {
+                        beforePhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onPickAfter = {
+                        afterPhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onPreview = { label, path ->
+                        previewPhotoPath = label to path
+                    }
+                )
+            }
+
             // Section 1: Muscle Recovery Radar
             item {
                 MuscleRecoveryTracker(
@@ -347,6 +396,41 @@ fun ProgressScreen(
             containerColor = GymDarkSurface
         )
     }
+
+    previewPhotoPath?.let { (label, path) ->
+        val bmp = remember(path) { ImageStorageHelper.loadImageBitmap(path) }
+        if (bmp != null) {
+            Dialog(onDismissRequest = { previewPhotoPath = null }) {
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    borderColor = NeonGreen.copy(alpha = 0.4f)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(label, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            IconButton(onClick = { previewPhotoPath = null }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Image(
+                            bitmap = bmp,
+                            contentDescription = label,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 420.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -452,6 +536,192 @@ private fun WeightTrendChartCard(logs: List<WeightLogEntry>) {
                     Text(chronological.last().dateDisplay, color = Color.Gray, fontSize = 10.sp)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TransformationPhotosCard(
+    photos: TransformationPhotos,
+    onPickBefore: () -> Unit,
+    onPickAfter: () -> Unit,
+    onPreview: (String, String) -> Unit
+) {
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        accentGlow = ElectricCyan,
+        borderColor = ElectricCyan.copy(alpha = 0.25f)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "TRANSFORMATION",
+                        color = ElectricCyan,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = "Before & After Progress",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+
+                if (photos.beforeWeightKg > 0f && photos.afterWeightKg > 0f) {
+                    val diff = photos.afterWeightKg - photos.beforeWeightKg
+                    val sign = if (diff >= 0f) "+" else ""
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = NeonGreen.copy(alpha = 0.16f)
+                    ) {
+                        Text(
+                            text = "$sign${String.format("%.1f", diff)} kg",
+                            color = NeonGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PhotoSlotCard(
+                    title = "BEFORE",
+                    photoPath = photos.beforePhotoPath,
+                    date = photos.beforeDate,
+                    weightKg = photos.beforeWeightKg,
+                    accentColor = EnergeticAmber,
+                    onUpload = onPickBefore,
+                    onPreview = { onPreview("Before Photo", photos.beforePhotoPath) },
+                    modifier = Modifier.weight(1f)
+                )
+                PhotoSlotCard(
+                    title = "AFTER",
+                    photoPath = photos.afterPhotoPath,
+                    date = photos.afterDate,
+                    weightKg = photos.afterWeightKg,
+                    accentColor = NeonGreen,
+                    onUpload = onPickAfter,
+                    onPreview = { onPreview("After Photo", photos.afterPhotoPath) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoSlotCard(
+    title: String,
+    photoPath: String,
+    date: String,
+    weightKg: Float,
+    accentColor: Color,
+    onUpload: () -> Unit,
+    onPreview: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bitmap = remember(photoPath) { ImageStorageHelper.loadImageBitmap(photoPath) }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(GymDarkCard)
+            .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+            .clickable { if (bitmap != null) onPreview() else onUpload() }
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = accentColor.copy(alpha = 0.16f)
+            ) {
+                Text(
+                    text = title,
+                    color = accentColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+            IconButton(
+                onClick = onUpload,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AddAPhoto,
+                    contentDescription = "Upload $title",
+                    tint = accentColor,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(145.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = if (weightKg > 0f) "$date • ${weightKg}kg" else date,
+                color = TextSecondary,
+                fontSize = 10.sp,
+                maxLines = 1
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(145.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(GymDarkSurface)
+                    .border(1.dp, GymDarkBorder, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.AddPhotoAlternate,
+                        contentDescription = null,
+                        tint = accentColor.copy(alpha = 0.8f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Tap to upload",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text("No photo yet", color = Color.Gray, fontSize = 10.sp)
         }
     }
 }
