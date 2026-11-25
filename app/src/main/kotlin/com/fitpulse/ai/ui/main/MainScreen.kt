@@ -27,6 +27,7 @@ enum class BottomTab(val title: String, val icon: ImageVector) {
 @Composable
 fun MainScreen(
     repository: FitnessRepository = remember { FitnessRepository() },
+    onOpenProfile: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(BottomTab.HOME) }
@@ -82,7 +83,9 @@ fun MainScreen(
                 BottomTab.HOME -> HomeScreen(
                     repository = repository,
                     onStartWorkout = { selectedTab = BottomTab.WORKOUT },
-                    onConsultCoach = { selectedTab = BottomTab.COACH }
+                    onConsultCoach = { selectedTab = BottomTab.COACH },
+                    onOpenProfile = onOpenProfile,
+                    onOpenNutrition = { selectedTab = BottomTab.NUTRITION }
                 )
                 BottomTab.WORKOUT -> WorkoutScreen(repository = repository)
                 BottomTab.NUTRITION -> NutritionScreen(repository = repository)

@@ -38,6 +38,8 @@ fun WorkoutScreen(
     val selectedDayIndex by repository.selectedDayIndex.collectAsState()
     val muscleRecoveries by repository.muscleRecoveries.collectAsState()
     var activeTimerSeconds by remember { mutableStateOf<Int?>(null) }
+    var showFinishDialog by remember { mutableStateOf(false) }
+    var savedBanner by remember { mutableStateOf<String?>(null) }
 
     val currentDay = workoutDays.getOrNull(selectedDayIndex)
 
@@ -185,10 +187,97 @@ fun WorkoutScreen(
                         )
                     }
                     item {
+                        savedBanner?.let { msg ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = NeonGreen.copy(alpha = 0.15f)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen)
+                            ) {
+                                Text(
+                                    text = msg,
+                                    color = NeonGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                        Button(
+                            onClick = { showFinishDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
+                        ) {
+                            Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Finish & Save Workout Session", fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        }
+                    }
+
+                    item {
                         Spacer(modifier = Modifier.height(80.dp)) // Padding for bottom bar & timer
                     }
                 }
             }
+        }
+
+        if (showFinishDialog && currentDay != null) {
+            var rpe by remember { mutableIntStateOf(7) }
+            var notes by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showFinishDialog = false },
+                title = { Text("Complete Workout?", color = Color.White, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Save ${currentDay.dayTitle} to your training history?",
+                            color = Color.LightGray,
+                            fontSize = 13.sp
+                        )
+                        Text("Effort / RPE: $rpe / 10", color = ElectricCyan, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Slider(
+                            value = rpe.toFloat(),
+                            onValueChange = { rpe = it.toInt() },
+                            valueRange = 1f..10f,
+                            steps = 8,
+                            colors = SliderDefaults.colors(thumbColor = NeonGreen, activeTrackColor = NeonGreen)
+                        )
+                        OutlinedTextField(
+                            value = notes,
+                            onValueChange = { notes = it },
+                            label = { Text("Session Notes (optional)") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = NeonGreen
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            repository.completeWorkoutSession(selectedDayIndex, rpe, notes)
+                            showFinishDialog = false
+                            savedBanner = "✅ Workout session saved to Progress & History!"
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
+                    ) {
+                        Text("Save Session", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFinishDialog = false }) {
+                        Text("Cancel", color = Color.Gray)
+                    }
+                },
+                containerColor = GymDarkSurface
+            )
         }
 
         // Floating Rest Timer Modal

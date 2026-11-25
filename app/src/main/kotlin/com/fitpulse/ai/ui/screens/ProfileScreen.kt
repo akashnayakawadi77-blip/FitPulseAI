@@ -1,5 +1,9 @@
 package com.fitpulse.ai.ui.screens
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -9,17 +13,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
+import com.fitpulse.ai.data.ReminderScheduler
 import com.fitpulse.ai.data.model.FitnessGoal
 import com.fitpulse.ai.data.model.FitnessLevel
 import com.fitpulse.ai.data.model.UserProfile
@@ -30,14 +37,23 @@ import com.fitpulse.ai.ui.theme.*
 @Composable
 fun ProfileScreen(
     repository: FitnessRepository,
+    onBack: (() -> Unit)? = null,
+    onRerunOnboarding: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val userProfile by repository.userProfile.collectAsState()
     val weightLogs by repository.weightLogs.collectAsState()
     val muscleRecoveries by repository.muscleRecoveries.collectAsState()
+    val reminderSettings by repository.reminderSettings.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showLogWeightDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
 
     val heightM = userProfile.heightCm / 100f
     val bmi = if (heightM > 0) userProfile.weightKg / (heightM * heightM) else 0f
@@ -53,6 +69,7 @@ fun ProfileScreen(
         modifier = modifier
             .fillMaxSize()
             .background(GymDarkBackground)
+            .statusBarsPadding()
     ) {
         // Top Header
         Row(
@@ -62,12 +79,26 @@ fun ProfileScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Athlete Profile",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-                color = Color.White
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(GymDarkSurface, CircleShape)
+                            .border(1.dp, GymDarkBorder, CircleShape)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+                Text(
+                    text = "Athlete Profile",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            }
 
             IconButton(
                 onClick = { showEditProfileDialog = true },
@@ -210,10 +241,138 @@ fun ProfileScreen(
                 }
             }
 
+            // Reminders & Notifications Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Smart Reminders", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Daily Workout Reminder", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text("Reminds you at 6:00 PM daily", color = Color.Gray, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = reminderSettings.workoutReminderEnabled,
+                                onCheckedChange = { enabled ->
+                                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    val updated = reminderSettings.copy(workoutReminderEnabled = enabled)
+                                    repository.updateReminderSettings(updated)
+                                    ReminderScheduler.applySettings(context, updated)
+                                },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = NeonGreen)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Hydration Reminder", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text("Every 2 hours for peak recovery", color = Color.Gray, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = reminderSettings.waterReminderEnabled,
+                                onCheckedChange = { enabled ->
+                                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    val updated = reminderSettings.copy(waterReminderEnabled = enabled)
+                                    repository.updateReminderSettings(updated)
+                                    ReminderScheduler.applySettings(context, updated)
+                                },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = ElectricCyan)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Account & Data Controls
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Account & Data", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
+
+                        OutlinedButton(
+                            onClick = onRerunOnboarding,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ElectricCyan)
+                        ) {
+                            Text("Re-run Goal Setup Wizard", color = ElectricCyan, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { showResetConfirmDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252))
+                        ) {
+                            Text("Reset All App Data", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             item {
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
+    }
+
+    if (showResetConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            title = { Text("Reset All Data?", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "This will permanently clear your workout history, weight logs, food logs, and profile on this device.",
+                    color = Color.LightGray,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        repository.resetAllData()
+                        showResetConfirmDialog = false
+                        onRerunOnboarding()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
+                ) {
+                    Text("Reset", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = GymDarkSurface
+        )
     }
 
     // Log Weight Dialog

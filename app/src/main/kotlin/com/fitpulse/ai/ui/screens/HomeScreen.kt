@@ -26,8 +26,11 @@ fun HomeScreen(
     repository: FitnessRepository,
     onStartWorkout: () -> Unit,
     onConsultCoach: () -> Unit,
+    onOpenProfile: () -> Unit = {},
+    onOpenNutrition: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val userProfile by repository.userProfile.collectAsState()
     val dailyScore by repository.dailyScore.collectAsState()
     val dailyTargets by repository.dailyTargets.collectAsState()
     val workoutDays by repository.workoutDays.collectAsState()
@@ -58,21 +61,21 @@ fun HomeScreen(
                         color = Color.White
                     )
                     Text(
-                        text = "Your fitness, today.",
+                        text = "Welcome back, ${userProfile.name}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ElectricCyan
                     )
                 }
-                Box(
+                IconButton(
+                    onClick = onOpenProfile,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(40.dp)
                         .background(NeonGreen.copy(alpha = 0.15f), CircleShape)
-                        .border(1.dp, NeonGreen, CircleShape),
-                    contentAlignment = Alignment.Center
+                        .border(1.dp, NeonGreen, CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Bolt,
-                        contentDescription = "Active",
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile & Settings",
                         tint = NeonGreen,
                         modifier = Modifier.size(20.dp)
                     )
@@ -174,8 +177,10 @@ fun HomeScreen(
                         current = "${dailyTargets.loggedCalories}",
                         target = "${dailyTargets.targetCalories} kcal",
                         color = EnergeticAmber,
-                        progress = dailyTargets.loggedCalories.toFloat() / dailyTargets.targetCalories.toFloat(),
-                        modifier = Modifier.weight(1f)
+                        progress = dailyTargets.loggedCalories.toFloat() / dailyTargets.targetCalories.coerceAtLeast(1).toFloat(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onOpenNutrition() }
                     )
                     TargetCard(
                         icon = Icons.Default.FitnessCenter,
@@ -183,8 +188,10 @@ fun HomeScreen(
                         current = "${dailyTargets.loggedProteinGrams}g",
                         target = "${dailyTargets.targetProteinGrams}g target",
                         color = NeonGreen,
-                        progress = dailyTargets.loggedProteinGrams.toFloat() / dailyTargets.targetProteinGrams.toFloat(),
-                        modifier = Modifier.weight(1f)
+                        progress = dailyTargets.loggedProteinGrams.toFloat() / dailyTargets.targetProteinGrams.coerceAtLeast(1).toFloat(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onOpenNutrition() }
                     )
                 }
 
@@ -196,21 +203,25 @@ fun HomeScreen(
                 ) {
                     TargetCard(
                         icon = Icons.Default.WaterDrop,
-                        label = "Water",
-                        current = "${dailyTargets.loggedWaterLiters} L",
-                        target = "${dailyTargets.targetWaterLiters} L target",
+                        label = "Water (+250ml)",
+                        current = "${String.format("%.1f", dailyTargets.loggedWaterLiters)} L",
+                        target = "${String.format("%.1f", dailyTargets.targetWaterLiters)} L target",
                         color = ElectricCyan,
-                        progress = dailyTargets.loggedWaterLiters / dailyTargets.targetWaterLiters,
-                        modifier = Modifier.weight(1f)
+                        progress = dailyTargets.loggedWaterLiters / dailyTargets.targetWaterLiters.coerceAtLeast(0.1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { repository.addWaterIntake(250) }
                     )
                     TargetCard(
                         icon = Icons.Default.DirectionsWalk,
-                        label = "Steps",
+                        label = "Steps (+500)",
                         current = "${dailyTargets.loggedSteps}",
                         target = "${dailyTargets.targetSteps} target",
                         color = Color(0xFFE040FB),
-                        progress = dailyTargets.loggedSteps.toFloat() / dailyTargets.targetSteps.toFloat(),
-                        modifier = Modifier.weight(1f)
+                        progress = dailyTargets.loggedSteps.toFloat() / dailyTargets.targetSteps.coerceAtLeast(1).toFloat(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { repository.addSteps(500) }
                     )
                 }
             }
@@ -229,7 +240,10 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .size(38.dp)
@@ -239,18 +253,26 @@ fun HomeScreen(
                                     Icon(Icons.Default.FitnessCenter, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(20.dp))
                                 }
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text("Today's Workout", color = Color.Gray, fontSize = 12.sp)
                                     Text(
                                         text = currentDay?.dayTitle ?: "Upper Body Training",
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
-                                        fontSize = 15.sp
+                                        fontSize = 15.sp,
+                                        maxLines = 2
                                     )
                                 }
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Badge(containerColor = NeonGreen.copy(alpha = 0.2f), contentColor = NeonGreen) {
-                                Text("Ready", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "Ready",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
 

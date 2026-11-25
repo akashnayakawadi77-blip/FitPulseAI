@@ -65,7 +65,7 @@ fun AiCoachScreen(
                     color = Color.White
                 )
                 Text(
-                    text = if (userProfile.geminiApiKey.isNotBlank()) "Powered by Gemini 1.5 Flash" else "Powered by Smart AI Engine",
+                    text = if (userProfile.geminiApiKey.isNotBlank()) "Powered by Gemini 2.0 Flash" else "Powered by Smart AI Engine",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (userProfile.geminiApiKey.isNotBlank()) ElectricCyan else NeonGreen
                 )

@@ -34,7 +34,42 @@ data class UserProfile(
     val fitnessLevel: FitnessLevel = FitnessLevel.INTERMEDIATE,
     val workoutEnvironment: WorkoutEnvironment = WorkoutEnvironment.FULL_GYM,
     val daysPerWeek: Int = 4,
-    val geminiApiKey: String = ""
+    val geminiApiKey: String = "",
+    val onboardingCompleted: Boolean = false
+)
+
+@Serializable
+data class LoggedFoodItem(
+    val id: String,
+    val name: String,
+    val mealType: String,
+    val calories: Int,
+    val proteinGrams: Int,
+    val carbsGrams: Int,
+    val fatGrams: Int,
+    val servingDesc: String = "1 serving",
+    val timestamp: Long = System.currentTimeMillis(),
+    val dateKey: String = ""
+)
+
+@Serializable
+data class FoodCatalogItem(
+    val id: String,
+    val name: String,
+    val category: String,
+    val servingDesc: String,
+    val calories: Int,
+    val proteinGrams: Int,
+    val carbsGrams: Int,
+    val fatGrams: Int
+)
+
+@Serializable
+data class ReminderSettings(
+    val workoutReminderEnabled: Boolean = false,
+    val workoutReminderHour: Int = 18,
+    val workoutReminderMinute: Int = 0,
+    val waterReminderEnabled: Boolean = false
 )
 
 @Serializable

@@ -1,5 +1,7 @@
 package com.fitpulse.ai.ui.screens
 
+import android.content.Intent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,22 +16,34 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
+import com.fitpulse.ai.data.model.WeightLogEntry
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
 import com.fitpulse.ai.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ProgressScreen(
     repository: FitnessRepository,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val muscleRecoveries by repository.muscleRecoveries.collectAsState()
     val weightLogs by repository.weightLogs.collectAsState()
+    val workoutSessions by repository.workoutSessions.collectAsState()
     val userProfile by repository.userProfile.collectAsState()
 
     var showLogWeightDialog by remember { mutableStateOf(false) }
@@ -38,6 +52,9 @@ fun ProgressScreen(
     val heightM = userProfile.heightCm / 100f
     val bmi = if (heightM > 0) userProfile.weightKg / (heightM * heightM) else 0f
     val bmiFormatted = String.format("%.1f", bmi)
+
+    val sessionsThisWeek = remember(workoutSessions) { repository.countSessionsThisWeek() }
+    val weeklyActive = remember(workoutSessions) { repository.getWeeklyActiveDays() }
 
     Column(
         modifier = modifier
@@ -69,7 +86,7 @@ fun ProgressScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Section 1: Muscle Recovery Radar (The Fitbod Advantage)
+            // Section 1: Muscle Recovery Radar
             item {
                 MuscleRecoveryTracker(
                     recoveryMap = muscleRecoveries,
@@ -77,7 +94,7 @@ fun ProgressScreen(
                 )
             }
 
-            // Section 2: Weekly Performance & Consistency
+            // Section 2: Weekly Performance & Consistency (Real session data)
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -96,21 +113,19 @@ fun ProgressScreen(
                                 Text("Target: ${userProfile.daysPerWeek} days/week", color = Color.Gray, fontSize = 11.sp)
                             }
                             Badge(containerColor = NeonGreen.copy(alpha = 0.2f), contentColor = NeonGreen) {
-                                Text("4 / 4 Completed", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("$sessionsThisWeek / ${userProfile.daysPerWeek} Completed", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Days of week indicators
                         val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-                        val active = listOf(true, true, false, true, true, false, false)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             days.forEachIndexed { i, d ->
-                                val isAct = active[i]
+                                val isAct = weeklyActive.getOrElse(i) { false }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Box(
                                         modifier = Modifier
@@ -135,7 +150,7 @@ fun ProgressScreen(
                 }
             }
 
-            // Section 3: Weight Journey & Body Composition
+            // Section 3: Weight Journey & Real Trend Chart
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -158,6 +173,10 @@ fun ProgressScreen(
                         Text("Log Weight", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
+            }
+
+            item {
+                WeightTrendChartCard(logs = weightLogs)
             }
 
             items(weightLogs.take(4), key = { it.timestamp }) { log ->
@@ -197,7 +216,46 @@ fun ProgressScreen(
                 }
             }
 
-            // Section 4: Data Ownership & CSV Export (Hevy / Spreadsheet Power Users)
+            // Section 4: Completed Workout History
+            if (workoutSessions.isNotEmpty()) {
+                item {
+                    Text("Recent Workout Sessions", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+
+                items(workoutSessions.take(5), key = { it.id }) { session ->
+                    val dateStr = remember(session.startTimeMillis) {
+                        SimpleDateFormat("MMM dd • hh:mm a", Locale.getDefault()).format(Date(session.startTimeMillis))
+                    }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
+                        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(session.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(
+                                    text = "$dateStr • ${session.completedExercisesCount}/${session.totalExercisesCount} exercises",
+                                    color = Color.Gray,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Badge(containerColor = ElectricCyan.copy(alpha = 0.15f), contentColor = ElectricCyan) {
+                                Text("${session.totalVolumeKg.toInt()} kg vol", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 5: Data Ownership & Real CSV Export
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -213,19 +271,26 @@ fun ProgressScreen(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "Export all your workout logs, set records, and weight history to CSV/Excel format. Free forever, no paywall.",
+                            "Share or save all your workout sessions, weight logs, and food history in CSV format.",
                             color = Color.Gray,
                             fontSize = 11.sp
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedButton(
                             onClick = {
-                                exportSuccessMessage = "Workout data exported to Downloads/FitPulse_Logs.csv successfully!"
+                                val csv = repository.exportProgressCsv()
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/csv"
+                                    putExtra(Intent.EXTRA_SUBJECT, "FitPulseAI Progress Export")
+                                    putExtra(Intent.EXTRA_TEXT, csv)
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Export FitPulseAI CSV"))
+                                exportSuccessMessage = "CSV ready to share/save!"
                             },
                             shape = RoundedCornerShape(10.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GymDarkBorder)
                         ) {
-                            Text("Export to CSV / Spreadsheet", color = ElectricCyan, fontSize = 12.sp)
+                            Text("Export & Share CSV", color = ElectricCyan, fontSize = 12.sp)
                         }
                         exportSuccessMessage?.let { msg ->
                             Spacer(modifier = Modifier.height(6.dp))
@@ -241,7 +306,6 @@ fun ProgressScreen(
         }
     }
 
-    // Log Weight Dialog
     if (showLogWeightDialog) {
         var inputWeight by remember { mutableStateOf(userProfile.weightKg.toString()) }
         AlertDialog(
@@ -282,5 +346,112 @@ fun ProgressScreen(
             },
             containerColor = GymDarkSurface
         )
+    }
+}
+
+@Composable
+private fun WeightTrendChartCard(logs: List<WeightLogEntry>) {
+    val chronological = remember(logs) { logs.take(10).reversed() }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = GymDarkSurface),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(GymDarkBorder))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Weight Trend", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                if (chronological.size >= 2) {
+                    val delta = chronological.last().weightKg - chronological.first().weightKg
+                    val sign = if (delta >= 0) "+" else ""
+                    Text(
+                        text = "$sign${String.format("%.1f", delta)} kg",
+                        color = if (delta <= 0) NeonGreen else EnergeticAmber,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (chronological.isEmpty()) {
+                Text("Log your weight to see your trend chart.", color = Color.Gray, fontSize = 12.sp)
+            } else {
+                val minW = (chronological.minOf { it.weightKg } - 1.5f).coerceAtLeast(20f)
+                val maxW = chronological.maxOf { it.weightKg } + 1.5f
+                val span = (maxW - minW).coerceAtLeast(1f)
+
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                ) {
+                    val w = size.width
+                    val h = size.height
+                    val padX = 16f
+                    val padY = 16f
+                    val usableW = (w - 2 * padX).coerceAtLeast(1f)
+                    val usableH = (h - 2 * padY).coerceAtLeast(1f)
+
+                    val points = chronological.mapIndexed { idx, entry ->
+                        val x = if (chronological.size == 1) w / 2f else padX + (idx.toFloat() / (chronological.size - 1)) * usableW
+                        val normY = (entry.weightKg - minW) / span
+                        val y = padY + (1f - normY) * usableH
+                        Offset(x, y)
+                    }
+
+                    if (points.size >= 2) {
+                        val fillPath = Path().apply {
+                            moveTo(points.first().x, h)
+                            points.forEach { lineTo(it.x, it.y) }
+                            lineTo(points.last().x, h)
+                            close()
+                        }
+                        drawPath(
+                            path = fillPath,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(NeonGreen.copy(alpha = 0.30f), Color.Transparent)
+                            )
+                        )
+
+                        val linePath = Path().apply {
+                            moveTo(points.first().x, points.first().y)
+                            for (i in 1 until points.size) {
+                                lineTo(points[i].x, points[i].y)
+                            }
+                        }
+                        drawPath(
+                            path = linePath,
+                            color = NeonGreen,
+                            style = Stroke(width = 5f, cap = StrokeCap.Round)
+                        )
+                    }
+
+                    points.forEach { pt ->
+                        drawCircle(color = GymDarkBackground, radius = 9f, center = pt)
+                        drawCircle(color = ElectricCyan, radius = 6f, center = pt)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(chronological.first().dateDisplay, color = Color.Gray, fontSize = 10.sp)
+                    Text(
+                        text = "${chronological.minOf { it.weightKg }}–${chronological.maxOf { it.weightKg }} kg",
+                        color = Color.Gray,
+                        fontSize = 10.sp
+                    )
+                    Text(chronological.last().dateDisplay, color = Color.Gray, fontSize = 10.sp)
+                }
+            }
+        }
     }
 }
