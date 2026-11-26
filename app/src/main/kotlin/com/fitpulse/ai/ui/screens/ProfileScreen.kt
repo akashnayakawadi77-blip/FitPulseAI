@@ -399,10 +399,10 @@ fun ProfileScreen(
                                 val jsonBackup = repository.exportFullBackupJson()
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "application/json"
-                                    putExtra(Intent.EXTRA_SUBJECT, "FitPulseAI Backup")
+                                    putExtra(Intent.EXTRA_SUBJECT, "FitPanda Backup")
                                     putExtra(Intent.EXTRA_TEXT, jsonBackup)
                                 }
-                                context.startActivity(Intent.createChooser(sendIntent, "Save FitPulseAI Backup"))
+                                context.startActivity(Intent.createChooser(sendIntent, "Save FitPanda Backup"))
                                 backupStatusMsg = "Backup ready to save to Drive/Files!"
                             },
                             modifier = Modifier.fillMaxWidth(),

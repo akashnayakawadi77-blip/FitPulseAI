@@ -330,10 +330,10 @@ fun ProgressScreen(
                                 val csv = repository.exportProgressCsv()
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/csv"
-                                    putExtra(Intent.EXTRA_SUBJECT, "FitPulseAI Progress Export")
+                                    putExtra(Intent.EXTRA_SUBJECT, "FitPanda Progress Export")
                                     putExtra(Intent.EXTRA_TEXT, csv)
                                 }
-                                context.startActivity(Intent.createChooser(sendIntent, "Export FitPulseAI CSV"))
+                                context.startActivity(Intent.createChooser(sendIntent, "Export FitPanda CSV"))
                                 exportSuccessMessage = "CSV ready to share/save!"
                             },
                             shape = RoundedCornerShape(10.dp),

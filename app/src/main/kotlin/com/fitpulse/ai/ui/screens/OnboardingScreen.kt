@@ -141,7 +141,7 @@ fun OnboardingScreen(
                     }
 
                     Text(
-                        text = "Welcome to FitPulseAI",
+                        text = "Welcome to FitPanda",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White

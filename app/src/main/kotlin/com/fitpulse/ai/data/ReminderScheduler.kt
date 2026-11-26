@@ -21,7 +21,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val body = if (type == "water") {
             "Drink 250 ml of water to stay on track with your recovery target."
         } else {
-            "Your FitPulseAI workout is ready. Let's build momentum today!"
+            "Your FitPanda workout is ready. Let's build momentum today!"
         }
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -29,7 +29,7 @@ class ReminderReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "FitPulseAI Reminders",
+                "FitPanda Reminders",
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             manager.createNotificationChannel(channel)

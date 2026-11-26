@@ -28,7 +28,7 @@ object OpenFoodFactsService {
         val url = "https://world.openfoodfacts.org/api/v2/product/$cleanCode.json"
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "FitPulseAI-Android/1.4.0")
+            .header("User-Agent", "FitPanda-Android/2.1.0")
             .build()
 
         return@withContext try {
