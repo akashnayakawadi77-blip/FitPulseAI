@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.fitpulse.ai.data.FitnessRepository
 import com.fitpulse.ai.data.StepCounterManager
+import com.fitpulse.ai.data.WorkoutMusicPlayer
 import com.fitpulse.ai.ui.theme.FitPulseAITheme
 
 class MainActivity : ComponentActivity() {
@@ -72,5 +73,10 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         stepCounterManager?.stop()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        WorkoutMusicPlayer.release()
+        super.onDestroy()
     }
 }

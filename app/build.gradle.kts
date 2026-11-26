@@ -11,8 +11,8 @@ android {
     applicationId = "com.fitpulse.ai"
     minSdk = 24
     targetSdk = 36
-    versionCode = 10
-    versionName = "2.3.1"
+    versionCode = 11
+    versionName = "2.4.0"
   }
 
   buildTypes {
@@ -93,4 +93,7 @@ dependencies {
   implementation(libs.androidx.camera.lifecycle)
   implementation(libs.androidx.camera.view)
   implementation(libs.mlkit.barcode.scanning)
+
+  // Media3 ExoPlayer (Workout Music Player)
+  implementation(libs.androidx.media3.exoplayer)
 }

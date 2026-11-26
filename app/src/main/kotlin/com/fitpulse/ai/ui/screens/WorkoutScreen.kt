@@ -33,6 +33,7 @@ import com.fitpulse.ai.ui.components.GradientPrimaryButton
 import com.fitpulse.ai.ui.components.MuscleImageHelper
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
 import com.fitpulse.ai.ui.components.RestTimerOverlay
+import com.fitpulse.ai.ui.components.WorkoutMusicBar
 import com.fitpulse.ai.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -173,6 +174,10 @@ fun WorkoutScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    item {
+                        WorkoutMusicBar()
+                    }
+
                     item {
                         MuscleRecoveryTracker(
                             recoveryMap = muscleRecoveries,
