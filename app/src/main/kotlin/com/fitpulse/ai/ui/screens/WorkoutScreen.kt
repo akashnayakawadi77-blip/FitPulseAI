@@ -172,7 +172,7 @@ fun WorkoutScreen(
                     item {
                         MuscleRecoveryTracker(
                             recoveryMap = muscleRecoveries,
-                            initialExpanded = true
+                            initialExpanded = false
                         )
                     }
 
@@ -414,6 +414,20 @@ fun ExerciseCard(
                         Icon(Icons.Default.Add, contentDescription = "Increase", tint = NeonGreen, modifier = Modifier.size(16.dp))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = ElectricCyan.copy(alpha = 0.14f),
+                        modifier = Modifier.clickable { showFormGuide = true }
+                    ) {
+                        Text(
+                            text = "Guide",
+                            color = ElectricCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
                         onClick = { expanded = !expanded },
                         modifier = Modifier.size(28.dp)
