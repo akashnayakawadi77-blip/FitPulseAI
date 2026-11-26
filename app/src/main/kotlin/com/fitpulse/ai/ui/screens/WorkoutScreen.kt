@@ -1,6 +1,7 @@
 package com.fitpulse.ai.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +30,7 @@ import com.fitpulse.ai.data.model.Exercise
 import com.fitpulse.ai.ui.components.ExerciseGuideDialog
 import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.components.GradientPrimaryButton
+import com.fitpulse.ai.ui.components.MuscleImageHelper
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
 import com.fitpulse.ai.ui.components.RestTimerOverlay
 import com.fitpulse.ai.ui.theme.*
@@ -330,22 +334,43 @@ fun ExerciseCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Checkbox
-                IconButton(
-                    onClick = onToggleComplete,
+                // Body-Part Muscle Image + Tap to Complete
+                val muscleImageRes = MuscleImageHelper.drawableForTarget(exercise.targetMuscle)
+                Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .background(
-                            if (exercise.isCompleted) NeonGreen else GymDarkCard,
-                            CircleShape
-                        )
+                        .size(54.dp)
+                        .clickable { onToggleComplete() }
                 ) {
-                    Icon(
-                        imageVector = if (exercise.isCompleted) Icons.Default.Check else Icons.Default.Circle,
-                        contentDescription = "Done",
-                        tint = if (exercise.isCompleted) Color.Black else Color.Gray,
-                        modifier = Modifier.size(20.dp)
+                    Image(
+                        painter = painterResource(id = muscleImageRes),
+                        contentDescription = exercise.targetMuscle,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(
+                                width = if (exercise.isCompleted) 2.dp else 1.dp,
+                                color = if (exercise.isCompleted) NeonGreen else GymDarkBorder,
+                                shape = RoundedCornerShape(14.dp)
+                            )
                     )
+                    if (exercise.isCompleted) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(20.dp)
+                                .background(NeonGreen, CircleShape)
+                                .border(1.5.dp, GymDarkBackground, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Done",
+                                tint = Color.Black,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

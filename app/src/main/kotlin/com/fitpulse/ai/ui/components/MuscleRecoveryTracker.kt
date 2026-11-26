@@ -1,6 +1,7 @@
 package com.fitpulse.ai.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,7 +76,7 @@ fun MuscleRecoveryTracker(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -90,17 +93,24 @@ fun MuscleRecoveryTracker(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Muscle Recovery Radar",
+                                text = "Muscle Recovery",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = Color.White,
+                                maxLines = 1
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Badge(containerColor = readinessColor.copy(alpha = 0.2f), contentColor = readinessColor) {
-                                Text("$averageFreshness% Fresh", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "$averageFreshness% Fresh",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
                         Text(
@@ -187,14 +197,22 @@ fun MuscleStatusCard(recoveryState: MuscleRecoveryState) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Image(
+                    painter = painterResource(id = MuscleImageHelper.drawableForMuscle(recoveryState.muscle)),
+                    contentDescription = recoveryState.muscle.displayName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
                 Text(
                     text = recoveryState.muscle.displayName,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     maxLines = 1
                 )
             }

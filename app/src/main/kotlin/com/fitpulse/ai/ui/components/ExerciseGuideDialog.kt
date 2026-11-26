@@ -1,6 +1,6 @@
 package com.fitpulse.ai.ui.components
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,10 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,9 +69,14 @@ fun ExerciseGuideDialog(
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MuscleDiagramCanvas(
-                        highlighted = muscleGroup,
-                        modifier = Modifier.size(width = 88.dp, height = 128.dp)
+                    Image(
+                        painter = painterResource(id = MuscleImageHelper.drawableForMuscle(muscleGroup)),
+                        contentDescription = muscleGroup.displayName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, NeonGreen.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
                     )
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -147,68 +152,6 @@ private fun GuideStepCard(
             Text(title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             Spacer(modifier = Modifier.height(3.dp))
             Text(body, color = TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-        }
-    }
-}
-
-@Composable
-private fun MuscleDiagramCanvas(
-    highlighted: MuscleGroup,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val cx = w / 2f
-        val base = Color(0xFF2B354B)
-        val glow = NeonGreen
-
-        // Head
-        drawCircle(color = base, radius = w * 0.12f, center = Offset(cx, h * 0.10f))
-
-        // Torso
-        drawRoundRect(
-            color = base,
-            topLeft = Offset(cx - w * 0.20f, h * 0.21f),
-            size = Size(w * 0.40f, h * 0.34f),
-            cornerRadius = CornerRadius(12f, 12f)
-        )
-
-        // Arms
-        drawRoundRect(color = base, topLeft = Offset(cx - w * 0.36f, h * 0.22f), size = Size(w * 0.12f, h * 0.30f), cornerRadius = CornerRadius(10f, 10f))
-        drawRoundRect(color = base, topLeft = Offset(cx + w * 0.24f, h * 0.22f), size = Size(w * 0.12f, h * 0.30f), cornerRadius = CornerRadius(10f, 10f))
-
-        // Legs
-        drawRoundRect(color = base, topLeft = Offset(cx - w * 0.19f, h * 0.57f), size = Size(w * 0.16f, h * 0.38f), cornerRadius = CornerRadius(10f, 10f))
-        drawRoundRect(color = base, topLeft = Offset(cx + w * 0.03f, h * 0.57f), size = Size(w * 0.16f, h * 0.38f), cornerRadius = CornerRadius(10f, 10f))
-
-        // Highlight targeted muscle zone
-        when (highlighted) {
-            MuscleGroup.CHEST -> {
-                drawRoundRect(color = glow, topLeft = Offset(cx - w * 0.17f, h * 0.23f), size = Size(w * 0.34f, h * 0.11f), cornerRadius = CornerRadius(8f, 8f))
-            }
-            MuscleGroup.BACK -> {
-                drawRoundRect(color = glow, topLeft = Offset(cx - w * 0.18f, h * 0.25f), size = Size(w * 0.36f, h * 0.16f), cornerRadius = CornerRadius(8f, 8f))
-            }
-            MuscleGroup.SHOULDERS -> {
-                drawCircle(color = glow, radius = w * 0.09f, center = Offset(cx - w * 0.24f, h * 0.24f))
-                drawCircle(color = glow, radius = w * 0.09f, center = Offset(cx + w * 0.24f, h * 0.24f))
-            }
-            MuscleGroup.BICEPS, MuscleGroup.TRICEPS -> {
-                drawRoundRect(color = glow, topLeft = Offset(cx - w * 0.36f, h * 0.26f), size = Size(w * 0.12f, h * 0.14f), cornerRadius = CornerRadius(8f, 8f))
-                drawRoundRect(color = glow, topLeft = Offset(cx + w * 0.24f, h * 0.26f), size = Size(w * 0.12f, h * 0.14f), cornerRadius = CornerRadius(8f, 8f))
-            }
-            MuscleGroup.CORE -> {
-                drawRoundRect(color = glow, topLeft = Offset(cx - w * 0.13f, h * 0.36f), size = Size(w * 0.26f, h * 0.17f), cornerRadius = CornerRadius(8f, 8f))
-            }
-            MuscleGroup.QUADS, MuscleGroup.HAMSTRINGS, MuscleGroup.GLUTES -> {
-                drawRoundRect(color = glow, topLeft = Offset(cx - w * 0.19f, h * 0.57f), size = Size(w * 0.16f, h * 0.21f), cornerRadius = CornerRadius(8f, 8f))
-                drawRoundRect(color = glow, topLeft = Offset(cx + w * 0.03f, h * 0.57f), size = Size(w * 0.16f, h * 0.21f), cornerRadius = CornerRadius(8f, 8f))
-            }
-            MuscleGroup.CALVES -> {
-                drawRoundRect(color = glow, topLeft = Offset(cx - w * 0.18f, h * 0.80f), size = Size(w * 0.14f, h * 0.14f), cornerRadius = CornerRadius(8f, 8f))
-                drawRoundRect(color = glow, topLeft = Offset(cx + w * 0.04f, h * 0.80f), size = Size(w * 0.14f, h * 0.14f), cornerRadius = CornerRadius(8f, 8f))
-            }
         }
     }
 }
