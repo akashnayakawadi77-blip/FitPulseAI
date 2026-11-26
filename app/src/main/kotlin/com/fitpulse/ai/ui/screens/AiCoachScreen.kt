@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -16,12 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
-import com.fitpulse.ai.data.model.FitnessGoal
-import com.fitpulse.ai.data.model.WorkoutEnvironment
 import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.components.GradientPrimaryButton
 import com.fitpulse.ai.ui.theme.*
@@ -36,8 +39,12 @@ fun AiCoachScreen(
     val chatMessages by repository.chatMessages.collectAsState()
     val isGenerating by repository.isGenerating.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     var userQuestion by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
+    var planGeneratedBanner by remember { mutableStateOf(false) }
     var showApiKeyDialog by remember { mutableStateOf(false) }
 
     val quickQuestions = listOf(
@@ -47,10 +54,34 @@ fun AiCoachScreen(
         "Effective 30-min fat loss workout?"
     )
 
+    // Auto-scroll to newest message or typing indicator
+    LaunchedEffect(chatMessages.size, isSending) {
+        val totalItems = 3 + chatMessages.size + (if (isSending) 1 else 0)
+        if (totalItems > 0) {
+            listState.animateScrollToItem(totalItems - 1)
+        }
+    }
+
+    fun sendQuestion(text: String) {
+        val q = text.trim()
+        if (q.isBlank() || isSending) return
+        userQuestion = ""
+        keyboardController?.hide()
+        isSending = true
+        coroutineScope.launch {
+            try {
+                repository.sendChatMessage(q)
+            } finally {
+                isSending = false
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(GymDarkBackground)
+            .imePadding()
     ) {
         // Top Header
         Row(
@@ -60,12 +91,12 @@ fun AiCoachScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "AI Fitness Coach",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Text(
                     text = if (userProfile.geminiApiKey.isNotBlank()) "Powered by Gemini 2.0 Flash" else "Powered by Smart AI Engine",
@@ -74,26 +105,47 @@ fun AiCoachScreen(
                 )
             }
 
-            IconButton(
-                onClick = { showApiKeyDialog = true },
-                modifier = Modifier
-                    .background(GymDarkSurface, CircleShape)
-                    .border(1.dp, GymDarkBorder, CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Key,
-                    contentDescription = "API Key",
-                    tint = if (userProfile.geminiApiKey.isNotBlank()) NeonGreen else Color.Gray
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(
+                    onClick = { repository.clearChatHistory() },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(GymDarkSurface, CircleShape)
+                        .border(1.dp, GymDarkBorder, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteSweep,
+                        contentDescription = "Clear Chat",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = { showApiKeyDialog = true },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(GymDarkSurface, CircleShape)
+                        .border(1.dp, GymDarkBorder, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Key,
+                        contentDescription = "API Key",
+                        tint = if (userProfile.geminiApiKey.isNotBlank()) NeonGreen else TextSecondary,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
             }
         }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 12.dp)
         ) {
             // AI Plan Generator Card
             item {
@@ -124,8 +176,10 @@ fun AiCoachScreen(
                         GradientPrimaryButton(
                             text = if (isGenerating) "Designing Custom Routine..." else "Generate Fresh AI Plan",
                             onClick = {
+                                planGeneratedBanner = false
                                 coroutineScope.launch {
                                     repository.generateNewPlan()
+                                    planGeneratedBanner = true
                                 }
                             },
                             enabled = !isGenerating,
@@ -138,6 +192,16 @@ fun AiCoachScreen(
                                 }
                             }
                         )
+
+                        if (planGeneratedBanner) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "✅ Fresh workout & diet plan ready! Check Workout & Nutrition tabs.",
+                                color = NeonGreen,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -149,11 +213,8 @@ fun AiCoachScreen(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(quickQuestions) { question ->
                         OutlinedButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    repository.sendChatMessage(question)
-                                }
-                            },
+                            onClick = { sendQuestion(question) },
+                            enabled = !isSending,
                             shape = RoundedCornerShape(20.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, GymDarkBorder),
                             colors = ButtonDefaults.outlinedButtonColors(containerColor = GymDarkSurfaceElevated)
@@ -166,7 +227,7 @@ fun AiCoachScreen(
 
             // Chat Messages Header
             item {
-                Text("Coach Consultation", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Coach Consultation", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
 
             // Chat Bubbles
@@ -180,12 +241,12 @@ fun AiCoachScreen(
                         modifier = Modifier
                             .widthIn(max = 300.dp)
                             .background(
-                                color = if (isUser) NeonGreen.copy(alpha = 0.9f) else GymDarkSurface,
+                                color = if (isUser) NeonGreen.copy(alpha = 0.92f) else GymDarkSurfaceElevated,
                                 shape = RoundedCornerShape(
                                     topStart = 16.dp,
                                     topEnd = 16.dp,
-                                    bottomStart = if (isUser) 16.dp else 2.dp,
-                                    bottomEnd = if (isUser) 2.dp else 16.dp
+                                    bottomStart = if (isUser) 16.dp else 4.dp,
+                                    bottomEnd = if (isUser) 4.dp else 16.dp
                                 )
                             )
                             .border(
@@ -197,10 +258,35 @@ fun AiCoachScreen(
                     ) {
                         Text(
                             text = msg.message,
-                            color = if (isUser) Color.Black else Color.White,
+                            color = if (isUser) Color(0xFF041009) else TextPrimary,
                             fontSize = 13.sp,
-                            lineHeight = 18.sp
+                            lineHeight = 19.sp
                         )
+                    }
+                }
+            }
+
+            if (isSending) {
+                item(key = "typing_indicator") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .background(GymDarkSurfaceElevated, RoundedCornerShape(16.dp))
+                                .border(1.dp, ElectricCyan.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = ElectricCyan,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Coach is thinking...", color = ElectricCyan, fontSize = 12.sp)
+                        }
                     }
                 }
             }
@@ -210,7 +296,9 @@ fun AiCoachScreen(
         Surface(
             color = GymDarkSurface,
             tonalElevation = 4.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, GymDarkBorder)
         ) {
             Row(
                 modifier = Modifier
@@ -221,9 +309,11 @@ fun AiCoachScreen(
                 OutlinedTextField(
                     value = userQuestion,
                     onValueChange = { userQuestion = it },
-                    placeholder = { Text("Ask your coach anything...", color = Color.Gray, fontSize = 13.sp) },
+                    placeholder = { Text("Ask your coach anything...", color = TextSecondary, fontSize = 13.sp) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { sendQuestion(userQuestion) }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
@@ -236,20 +326,21 @@ fun AiCoachScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
-                    onClick = {
-                        val q = userQuestion.trim()
-                        if (q.isNotBlank()) {
-                            userQuestion = ""
-                            coroutineScope.launch {
-                                repository.sendChatMessage(q)
-                            }
-                        }
-                    },
+                    onClick = { sendQuestion(userQuestion) },
+                    enabled = userQuestion.isNotBlank() && !isSending,
                     modifier = Modifier
                         .size(46.dp)
-                        .background(NeonGreen, CircleShape)
+                        .background(
+                            if (userQuestion.isNotBlank() && !isSending) NeonGreen else GymDarkCard,
+                            CircleShape
+                        )
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = if (userQuestion.isNotBlank() && !isSending) Color.Black else TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
@@ -264,7 +355,7 @@ fun AiCoachScreen(
             text = {
                 Column {
                     Text(
-                        "Paste your Google Gemini API key to activate live Gemini 1.5 Flash AI generation. If left empty, the app uses its built-in smart AI engine seamlessly.",
+                        "Paste your Google Gemini API key to activate live Gemini 2.0 Flash AI generation and meal photo scanning. If left empty, the app uses its built-in smart AI engine.",
                         color = Color.LightGray,
                         fontSize = 13.sp
                     )
@@ -291,7 +382,7 @@ fun AiCoachScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
                 ) {
-                    Text("Save", color = Color.Black)
+                    Text("Save", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {

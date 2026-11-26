@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.roundToInt
 
 class FitnessRepository(private val context: Context? = null) {
@@ -492,7 +493,7 @@ class FitnessRepository(private val context: Context? = null) {
 
     suspend fun sendChatMessage(userText: String) {
         val userMsg = AiChatMessage(
-            id = "user_${System.currentTimeMillis()}",
+            id = "user_${UUID.randomUUID()}",
             isUser = true,
             message = userText
         )
@@ -501,12 +502,24 @@ class FitnessRepository(private val context: Context? = null) {
 
         val coachReply = coachService.askCoach(userText, _userProfile.value)
         val aiMsg = AiChatMessage(
-            id = "ai_${System.currentTimeMillis()}",
+            id = "ai_${UUID.randomUUID()}",
             isUser = false,
             message = coachReply
         )
         _chatMessages.update { it + aiMsg }
         db?.saveChatMessages(_chatMessages.value)
+    }
+
+    fun clearChatHistory() {
+        val welcome = listOf(
+            AiChatMessage(
+                id = "welcome_${UUID.randomUUID()}",
+                isUser = false,
+                message = "👋 Chat cleared! Ask me anything about workouts, Indian diet plans, form tips, or recovery."
+            )
+        )
+        _chatMessages.value = welcome
+        db?.saveChatMessages(welcome)
     }
 
     suspend fun analyzeMealPhoto(imageBytes: ByteArray): MealScanResult {
