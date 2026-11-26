@@ -177,6 +177,7 @@ class LocalDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null,
     fun loadLastActiveDate(): String? = getString("last_active_date")
 
     fun insertWeightLog(entry: WeightLogEntry) {
+        writableDatabase.delete(TABLE_WEIGHT, "dateDisplay = ?", arrayOf(entry.dateDisplay))
         val cv = ContentValues().apply {
             put("timestamp", entry.timestamp)
             put("dateDisplay", entry.dateDisplay)
@@ -185,8 +186,13 @@ class LocalDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null,
         writableDatabase.insertWithOnConflict(TABLE_WEIGHT, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
     }
 
+    fun deleteWeightLog(timestamp: Long) {
+        writableDatabase.delete(TABLE_WEIGHT, "timestamp = ?", arrayOf(timestamp.toString()))
+    }
+
     fun loadWeightLogs(): List<WeightLogEntry> {
         val list = mutableListOf<WeightLogEntry>()
+        val seenDates = mutableSetOf<String>()
         readableDatabase.query(
             TABLE_WEIGHT,
             arrayOf("timestamp", "dateDisplay", "weightKg"),
@@ -194,13 +200,14 @@ class LocalDatabase(context: Context) : SQLiteOpenHelper(context, DB_NAME, null,
             "timestamp DESC"
         ).use { c ->
             while (c.moveToNext()) {
-                list.add(
-                    WeightLogEntry(
-                        timestamp = c.getLong(0),
-                        dateDisplay = c.getString(1),
-                        weightKg = c.getFloat(2)
-                    )
+                val entry = WeightLogEntry(
+                    timestamp = c.getLong(0),
+                    dateDisplay = c.getString(1),
+                    weightKg = c.getFloat(2)
                 )
+                if (seenDates.add(entry.dateDisplay)) {
+                    list.add(entry)
+                }
             }
         }
         return list

@@ -264,20 +264,20 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("Weight Journey", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text("Track your body composition progress", color = Color.Gray, fontSize = 12.sp)
                     }
-
+                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { showLogWeightDialog = true },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
                         shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Log Weight", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("Log Weight", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false)
                     }
                 }
             }
@@ -309,12 +309,21 @@ fun ProfileScreen(
                             Text(log.dateDisplay, color = Color.LightGray, fontSize = 14.sp)
                         }
 
-                        Text(
-                            text = "${log.weightKg} kg",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            fontSize = 16.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${log.weightKg} kg",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            IconButton(
+                                onClick = { repository.deleteWeightLog(log.timestamp) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
             }

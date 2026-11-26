@@ -424,15 +424,23 @@ class FitnessRepository(private val context: Context? = null) {
 
     fun logCurrentWeight(weight: Float) {
         val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+        val todayDisplay = dateFormat.format(Date())
         val entry = WeightLogEntry(
             timestamp = System.currentTimeMillis(),
-            dateDisplay = dateFormat.format(Date()),
+            dateDisplay = todayDisplay,
             weightKg = weight
         )
-        _weightLogs.update { logs -> listOf(entry) + logs }
+        _weightLogs.update { logs ->
+            listOf(entry) + logs.filterNot { it.dateDisplay == todayDisplay }
+        }
         db?.insertWeightLog(entry)
         _userProfile.update { it.copy(weightKg = weight) }
         db?.saveUserProfile(_userProfile.value)
+    }
+
+    fun deleteWeightLog(timestamp: Long) {
+        _weightLogs.update { logs -> logs.filterNot { it.timestamp == timestamp } }
+        db?.deleteWeightLog(timestamp)
     }
 
     fun updateProfile(newProfile: UserProfile) {
