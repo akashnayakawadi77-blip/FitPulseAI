@@ -1,5 +1,10 @@
 package com.fitpulse.ai.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,12 +31,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.fitpulse.ai.data.FitnessRepository
 import com.fitpulse.ai.data.FoodCatalog
+import com.fitpulse.ai.data.OpenFoodFactsService
 import com.fitpulse.ai.data.model.FoodCatalogItem
 import com.fitpulse.ai.data.model.LoggedFoodItem
 import com.fitpulse.ai.data.model.MealPlanItem
+import com.fitpulse.ai.data.model.MealScanResult
 import com.fitpulse.ai.ui.components.AnimatedCircularScoreRing
+import com.fitpulse.ai.ui.components.BarcodeScannerDialog
 import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.theme.*
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import kotlin.math.roundToInt
 
 @Composable
@@ -38,9 +49,46 @@ fun NutritionScreen(
     repository: FitnessRepository,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val nutritionPlan by repository.nutritionPlan.collectAsState()
     val loggedFoods by repository.loggedFoods.collectAsState()
     var showLogFoodDialog by remember { mutableStateOf(false) }
+    var showBarcodeDialog by remember { mutableStateOf(false) }
+    var isScanningMeal by remember { mutableStateOf(false) }
+    var scanErrorMessage by remember { mutableStateOf<String?>(null) }
+    var pendingScanResult by remember { mutableStateOf<MealScanResult?>(null) }
+
+    val mealPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            isScanningMeal = true
+            scanErrorMessage = null
+            scope.launch {
+                val bytes = runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val bmp = BitmapFactory.decodeStream(stream) ?: return@use null
+                        val maxDim = 800
+                        val scale = minOf(1f, maxDim.toFloat() / maxOf(bmp.width, bmp.height).coerceAtLeast(1))
+                        val scaled = if (scale < 1f) {
+                            Bitmap.createScaledBitmap(bmp, (bmp.width * scale).toInt(), (bmp.height * scale).toInt(), true)
+                        } else bmp
+                        val baos = ByteArrayOutputStream()
+                        scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
+                        baos.toByteArray()
+                    }
+                }.getOrNull()
+
+                if (bytes != null) {
+                    pendingScanResult = repository.analyzeMealPhoto(bytes)
+                } else {
+                    scanErrorMessage = "Could not read selected meal image."
+                }
+                isScanningMeal = false
+            }
+        }
+    }
 
     val loggedCalories = loggedFoods.sumOf { it.calories }
     val loggedProtein = loggedFoods.sumOf { it.proteinGrams }
@@ -68,9 +116,9 @@ fun NutritionScreen(
                     color = Color.White
                 )
                 Text(
-                    text = "Search Indian & fitness foods or log meals",
+                    text = "Scan meals, barcodes, or search Indian foods",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = TextSecondary
                 )
             }
 
@@ -84,6 +132,72 @@ fun NutritionScreen(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Log Food", fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
+        }
+
+        // Quick Scan Action Bar: AI Meal Photo + Barcode Scanner
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(enabled = !isScanningMeal) {
+                        mealPhotoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                shape = RoundedCornerShape(14.dp),
+                color = GymDarkSurfaceElevated,
+                border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen.copy(alpha = 0.35f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (isScanningMeal) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = NeonGreen, strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(17.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isScanningMeal) "Scanning..." else "AI Meal Scan",
+                        color = NeonGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { showBarcodeDialog = true },
+                shape = RoundedCornerShape(14.dp),
+                color = GymDarkSurfaceElevated,
+                border = androidx.compose.foundation.BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.35f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(17.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Barcode Scan", color = ElectricCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+
+        scanErrorMessage?.let { err ->
+            Text(
+                text = err,
+                color = FireOrange,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
         }
 
         if (nutritionPlan == null) {
@@ -366,6 +480,173 @@ fun NutritionScreen(
                 showLogFoodDialog = false
             }
         )
+    }
+
+    if (showBarcodeDialog) {
+        BarcodeScannerDialog(
+            onDismiss = { showBarcodeDialog = false },
+            onBarcodeDetected = { code ->
+                showBarcodeDialog = false
+                isScanningMeal = true
+                scanErrorMessage = null
+                scope.launch {
+                    val result = OpenFoodFactsService.lookupBarcode(code)
+                    isScanningMeal = false
+                    if (result != null) {
+                        pendingScanResult = result
+                    } else {
+                        scanErrorMessage = "Barcode $code not found in OpenFoodFacts — try custom entry."
+                    }
+                }
+            }
+        )
+    }
+
+    pendingScanResult?.let { result ->
+        ScanResultReviewDialog(
+            initial = result,
+            onDismiss = { pendingScanResult = null },
+            onSave = { logged ->
+                repository.logFood(logged)
+                pendingScanResult = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun ScanResultReviewDialog(
+    initial: MealScanResult,
+    onDismiss: () -> Unit,
+    onSave: (LoggedFoodItem) -> Unit
+) {
+    var name by remember { mutableStateOf(initial.name) }
+    var calories by remember { mutableStateOf(initial.calories.toString()) }
+    var protein by remember { mutableStateOf(initial.proteinGrams.toString()) }
+    var carbs by remember { mutableStateOf(initial.carbsGrams.toString()) }
+    var fat by remember { mutableStateOf(initial.fatGrams.toString()) }
+    var mealType by remember { mutableStateOf("Lunch") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            borderColor = NeonGreen.copy(alpha = 0.4f)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (initial.usedGeminiVision) "AI Meal Scan Result" else "Scanned Food Details",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 17.sp
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                    }
+                }
+
+                if (initial.note.isNotBlank()) {
+                    Text(initial.note, color = ElectricCyan, fontSize = 11.sp)
+                }
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Food / Dish Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = NeonGreen)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = calories,
+                        onValueChange = { calories = it.filter { c -> c.isDigit() } },
+                        label = { Text("kcal") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = NeonGreen)
+                    )
+                    OutlinedTextField(
+                        value = protein,
+                        onValueChange = { protein = it.filter { c -> c.isDigit() } },
+                        label = { Text("Pro (g)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = NeonGreen)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = carbs,
+                        onValueChange = { carbs = it.filter { c -> c.isDigit() } },
+                        label = { Text("Carbs (g)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = NeonGreen)
+                    )
+                    OutlinedTextField(
+                        value = fat,
+                        onValueChange = { fat = it.filter { c -> c.isDigit() } },
+                        label = { Text("Fat (g)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = NeonGreen)
+                    )
+                }
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(listOf("Breakfast", "Lunch", "Snack", "Dinner")) { mt ->
+                        val sel = mealType == mt
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (sel) ElectricCyan.copy(alpha = 0.2f) else GymDarkCard,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (sel) ElectricCyan else GymDarkBorder),
+                            modifier = Modifier.clickable { mealType = mt }
+                        ) {
+                            Text(
+                                text = mt,
+                                color = if (sel) ElectricCyan else Color.Gray,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        onSave(
+                            LoggedFoodItem(
+                                id = "scan_${System.currentTimeMillis()}",
+                                name = name.trim().ifBlank { "Scanned Meal" },
+                                mealType = mealType,
+                                calories = calories.toIntOrNull() ?: initial.calories,
+                                proteinGrams = protein.toIntOrNull() ?: initial.proteinGrams,
+                                carbsGrams = carbs.toIntOrNull() ?: initial.carbsGrams,
+                                fatGrams = fat.toIntOrNull() ?: initial.fatGrams,
+                                servingDesc = initial.servingDesc
+                            )
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
+                ) {
+                    Text("Add to Today's Log", fontWeight = FontWeight.Black)
+                }
+            }
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 package com.fitpulse.ai.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -57,6 +58,22 @@ fun ProfileScreen(
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showLogWeightDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
+    var backupStatusMsg by remember { mutableStateOf<String?>(null) }
+
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val raw = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            }.getOrNull()
+            backupStatusMsg = if (raw != null && repository.importFullBackupJson(raw)) {
+                "✅ Backup restored successfully!"
+            } else {
+                "⚠️ Invalid backup file."
+            }
+        }
+    }
 
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -376,6 +393,37 @@ fun ProfileScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Account & Data", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
+
+                        OutlinedButton(
+                            onClick = {
+                                val jsonBackup = repository.exportFullBackupJson()
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_SUBJECT, "FitPulseAI Backup")
+                                    putExtra(Intent.EXTRA_TEXT, jsonBackup)
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Save FitPulseAI Backup"))
+                                backupStatusMsg = "Backup ready to save to Drive/Files!"
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen)
+                        ) {
+                            Text("Export Full Backup (JSON)", color = NeonGreen, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { restoreBackupLauncher.launch("application/json") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ElectricCyan)
+                        ) {
+                            Text("Restore from Backup File", color = ElectricCyan, fontWeight = FontWeight.Bold)
+                        }
+
+                        backupStatusMsg?.let { msg ->
+                            Text(msg, color = NeonGreen, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
 
                         OutlinedButton(
                             onClick = onRerunOnboarding,

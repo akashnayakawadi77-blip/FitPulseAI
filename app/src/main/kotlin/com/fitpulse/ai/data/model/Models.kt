@@ -50,6 +50,27 @@ data class TransformationPhotos(
 )
 
 @Serializable
+data class MealScanResult(
+    val name: String,
+    val calories: Int,
+    val proteinGrams: Int,
+    val carbsGrams: Int,
+    val fatGrams: Int,
+    val servingDesc: String = "1 plate",
+    val note: String = "",
+    val usedGeminiVision: Boolean = false
+)
+
+@Serializable
+data class FullBackupData(
+    val userProfile: UserProfile,
+    val workoutDays: List<WorkoutDay>,
+    val weightLogs: List<WeightLogEntry>,
+    val workoutSessions: List<WorkoutSession>,
+    val reminderSettings: ReminderSettings
+)
+
+@Serializable
 data class LoggedFoodItem(
     val id: String,
     val name: String,

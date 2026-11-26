@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitpulse.ai.data.FitnessRepository
 import com.fitpulse.ai.data.model.Exercise
+import com.fitpulse.ai.ui.components.ExerciseGuideDialog
 import com.fitpulse.ai.ui.components.GlassCard
 import com.fitpulse.ai.ui.components.GradientPrimaryButton
 import com.fitpulse.ai.ui.components.MuscleRecoveryTracker
@@ -309,6 +310,7 @@ fun ExerciseCard(
     onStartTimer: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var showFormGuide by remember { mutableStateOf(false) }
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -442,8 +444,26 @@ fun ExerciseCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = exercise.coachingTip, color = Color.LightGray, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { showFormGuide = true },
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ElectricCyan),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Visibility, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Visual Muscle & Form Guide", color = ElectricCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
+    }
+
+    if (showFormGuide) {
+        ExerciseGuideDialog(
+            exercise = exercise,
+            onDismiss = { showFormGuide = false }
+        )
     }
 }

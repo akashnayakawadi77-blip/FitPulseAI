@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -507,6 +509,10 @@ class FitnessRepository(private val context: Context? = null) {
         db?.saveChatMessages(_chatMessages.value)
     }
 
+    suspend fun analyzeMealPhoto(imageBytes: ByteArray): MealScanResult {
+        return coachService.analyzeMealPhoto(imageBytes, _userProfile.value.geminiApiKey)
+    }
+
     fun resetAllData() {
         db?.clearAllData()
         _workoutSessions.value = emptyList()
@@ -529,5 +535,38 @@ class FitnessRepository(private val context: Context? = null) {
             sb.appendLine("Food,${f.dateKey},${f.name},${f.calories} kcal / ${f.proteinGrams}g P")
         }
         return sb.toString()
+    }
+
+    fun exportFullBackupJson(): String {
+        val backup = FullBackupData(
+            userProfile = _userProfile.value,
+            workoutDays = _workoutDays.value,
+            weightLogs = _weightLogs.value,
+            workoutSessions = _workoutSessions.value,
+            reminderSettings = _reminderSettings.value
+        )
+        return Json { prettyPrint = true; encodeDefaults = true }.encodeToString(backup)
+    }
+
+    fun importFullBackupJson(rawJson: String): Boolean {
+        return try {
+            val backup = Json { ignoreUnknownKeys = true }.decodeFromString<FullBackupData>(rawJson)
+            _userProfile.value = backup.userProfile
+            _workoutDays.value = backup.workoutDays
+            _weightLogs.value = backup.weightLogs
+            _workoutSessions.value = backup.workoutSessions
+            _reminderSettings.value = backup.reminderSettings
+
+            db?.saveUserProfile(backup.userProfile)
+            db?.saveWorkoutDays(backup.workoutDays)
+            backup.weightLogs.forEach { db?.insertWeightLog(it) }
+            backup.workoutSessions.forEach { db?.insertWorkoutSession(it) }
+            db?.saveReminderSettings(backup.reminderSettings)
+            recalculateMetrics()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 }

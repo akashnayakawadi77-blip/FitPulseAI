@@ -1,5 +1,6 @@
 package com.fitpulse.ai.data
 
+import android.util.Base64
 import com.fitpulse.ai.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,6 +66,82 @@ class AiCoachService {
 
         // Offline smart response
         generateSmartAdvice(question, profile)
+    }
+
+    suspend fun analyzeMealPhoto(imageBytes: ByteArray, apiKey: String): MealScanResult = withContext(Dispatchers.IO) {
+        if (apiKey.isNotBlank() && imageBytes.isNotEmpty()) {
+            try {
+                val base64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey"
+                val prompt = """
+                    Analyze this food / meal photo (including Indian or international dishes).
+                    Estimate the total portion shown and return ONLY valid JSON:
+                    {
+                      "name": "Dish Name",
+                      "calories": 480,
+                      "proteinGrams": 26,
+                      "carbsGrams": 54,
+                      "fatGrams": 16,
+                      "servingDesc": "1 plate / bowl",
+                      "note": "Brief breakdown of items detected"
+                    }
+                """.trimIndent()
+
+                val bodyJson = buildJsonObject {
+                    putJsonArray("contents") {
+                        addJsonObject {
+                            putJsonArray("parts") {
+                                addJsonObject { put("text", prompt) }
+                                addJsonObject {
+                                    putJsonObject("inline_data") {
+                                        put("mime_type", "image/jpeg")
+                                        put("data", base64)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }.toString()
+
+                val req = Request.Builder()
+                    .url(url)
+                    .post(bodyJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                httpClient.newCall(req).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val raw = resp.body?.string() ?: ""
+                        val text = extractTextFromGeminiResponse(raw) ?: ""
+                        val clean = text.substringAfter("```json").substringBeforeLast("```").trim().ifEmpty { text.trim() }
+                        val obj = json.parseToJsonElement(clean).jsonObject
+                        return@withContext MealScanResult(
+                            name = obj["name"]?.jsonPrimitive?.content ?: "Scanned Meal",
+                            calories = obj["calories"]?.jsonPrimitive?.intOrNull ?: 450,
+                            proteinGrams = obj["proteinGrams"]?.jsonPrimitive?.intOrNull ?: 25,
+                            carbsGrams = obj["carbsGrams"]?.jsonPrimitive?.intOrNull ?: 50,
+                            fatGrams = obj["fatGrams"]?.jsonPrimitive?.intOrNull ?: 15,
+                            servingDesc = obj["servingDesc"]?.jsonPrimitive?.content ?: "1 serving",
+                            note = obj["note"]?.jsonPrimitive?.content ?: "Estimated by Gemini Vision",
+                            usedGeminiVision = true
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // Smart offline/no-key template so user can review & adjust macros immediately
+        MealScanResult(
+            name = "Home Cooked Meal Plate",
+            calories = 450,
+            proteinGrams = 24,
+            carbsGrams = 55,
+            fatGrams = 14,
+            servingDesc = "1 plate",
+            note = if (apiKey.isBlank()) "Add Gemini API key in Coach tab for live photo recognition — adjust estimates below." else "Offline fallback — adjust estimates below.",
+            usedGeminiVision = false
+        )
     }
 
     private fun callGeminiApi(apiKey: String, promptText: String): String {

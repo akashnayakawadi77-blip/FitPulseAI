@@ -11,8 +11,8 @@ android {
     applicationId = "com.fitpulse.ai"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "1.3.0"
+    versionCode = 4
+    versionName = "1.4.0"
   }
 
   buildTypes {
@@ -86,4 +86,11 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
+  // CameraX + ML Kit Barcode Scanning
+  implementation(libs.androidx.camera.core)
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.view)
+  implementation(libs.mlkit.barcode.scanning)
 }
