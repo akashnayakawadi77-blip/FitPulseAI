@@ -2,8 +2,10 @@ package com.fitpulse.ai.data
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.view.KeyEvent
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -44,6 +46,9 @@ object WorkoutMusicPlayer {
 
     private val _repeatOne = MutableStateFlow(true)
     val repeatOne: StateFlow<Boolean> = _repeatOne.asStateFlow()
+
+    private val _externalMode = MutableStateFlow(false)
+    val externalMode: StateFlow<Boolean> = _externalMode.asStateFlow()
 
     fun init(context: Context) {
         if (appContext == null) {
@@ -230,5 +235,34 @@ object WorkoutMusicPlayer {
         player?.release()
         player = null
         _isPlaying.value = false
+    }
+
+    fun setExternalMode(enabled: Boolean) {
+        _externalMode.value = enabled
+        if (enabled && _isPlaying.value) {
+            player?.pause()
+        }
+    }
+
+    fun openExternalMusicApp(context: Context, packageName: String, fallbackUrl: String) {
+        setExternalMode(true)
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (launchIntent != null) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(launchIntent)
+        } else {
+            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(webIntent)
+        }
+    }
+
+    fun sendSystemMediaKey(context: Context, keyCode: Int) {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
+        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode)
+        am.dispatchMediaKeyEvent(down)
+        am.dispatchMediaKeyEvent(up)
     }
 }

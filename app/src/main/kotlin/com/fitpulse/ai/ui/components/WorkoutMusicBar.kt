@@ -1,5 +1,6 @@
 package com.fitpulse.ai.ui.components
 
+import android.view.KeyEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -11,6 +12,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +44,7 @@ fun WorkoutMusicBar(
     val isPlaying by WorkoutMusicPlayer.isPlaying.collectAsState()
     val volume by WorkoutMusicPlayer.volume.collectAsState()
     val repeatOne by WorkoutMusicPlayer.repeatOne.collectAsState()
+    val externalMode by WorkoutMusicPlayer.externalMode.collectAsState()
 
     var showPlaylistDialog by remember { mutableStateOf(false) }
 
@@ -48,6 +52,7 @@ fun WorkoutMusicBar(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) {
+            WorkoutMusicPlayer.setExternalMode(false)
             WorkoutMusicPlayer.addUserTracks(context, uris)
         }
     }
@@ -57,8 +62,8 @@ fun WorkoutMusicBar(
     GlassCard(
         modifier = modifier.fillMaxWidth(),
         cornerRadius = 18.dp,
-        accentGlow = if (isPlaying) NeonGreen else ElectricCyan,
-        borderColor = if (isPlaying) NeonGreen.copy(alpha = 0.45f) else GymDarkBorder
+        accentGlow = if (externalMode) ElectricCyan else if (isPlaying) NeonGreen else ElectricCyan,
+        borderColor = if (externalMode) ElectricCyan.copy(alpha = 0.45f) else if (isPlaying) NeonGreen.copy(alpha = 0.45f) else GymDarkBorder
     ) {
         Row(
             modifier = Modifier
@@ -71,15 +76,17 @@ fun WorkoutMusicBar(
                 modifier = Modifier
                     .size(38.dp)
                     .background(
-                        if (isPlaying) NeonGreen.copy(alpha = 0.2f) else GymDarkCard,
+                        if (externalMode) ElectricCyan.copy(alpha = 0.18f)
+                        else if (isPlaying) NeonGreen.copy(alpha = 0.2f)
+                        else GymDarkCard,
                         RoundedCornerShape(11.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.MusicNote,
+                    imageVector = if (externalMode) Icons.Default.Headphones else Icons.Default.MusicNote,
                     contentDescription = "Workout Music",
-                    tint = if (isPlaying) NeonGreen else ElectricCyan,
+                    tint = if (externalMode) ElectricCyan else if (isPlaying) NeonGreen else ElectricCyan,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -88,7 +95,7 @@ fun WorkoutMusicBar(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = currentTrack?.title ?: "Workout Beats",
+                    text = if (externalMode) "Amazon / Phone Media" else (currentTrack?.title ?: "Workout Beats"),
                     color = TextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -96,7 +103,7 @@ fun WorkoutMusicBar(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = currentTrack?.subtitle ?: "Tap to choose beats or MP3s",
+                    text = if (externalMode) "Controlling background music app" else (currentTrack?.subtitle ?: "Tap for Beats, MP3s or Amazon Music"),
                     color = TextSecondary,
                     fontSize = 11.sp,
                     maxLines = 1,
@@ -105,28 +112,46 @@ fun WorkoutMusicBar(
             }
 
             IconButton(
-                onClick = { WorkoutMusicPlayer.previousTrack() },
+                onClick = {
+                    if (externalMode) {
+                        WorkoutMusicPlayer.sendSystemMediaKey(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                    } else {
+                        WorkoutMusicPlayer.previousTrack()
+                    }
+                },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
 
             IconButton(
-                onClick = { WorkoutMusicPlayer.togglePlayPause() },
+                onClick = {
+                    if (externalMode) {
+                        WorkoutMusicPlayer.sendSystemMediaKey(context, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                    } else {
+                        WorkoutMusicPlayer.togglePlayPause()
+                    }
+                },
                 modifier = Modifier
                     .size(36.dp)
-                    .background(NeonGreen, CircleShape)
+                    .background(if (externalMode) ElectricCyan else NeonGreen, CircleShape)
             ) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    imageVector = if (!externalMode && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = "Play or Pause",
                     tint = Color.Black,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
             IconButton(
-                onClick = { WorkoutMusicPlayer.nextTrack() },
+                onClick = {
+                    if (externalMode) {
+                        WorkoutMusicPlayer.sendSystemMediaKey(context, KeyEvent.KEYCODE_MEDIA_NEXT)
+                    } else {
+                        WorkoutMusicPlayer.nextTrack()
+                    }
+                },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = TextSecondary, modifier = Modifier.size(20.dp))
@@ -136,7 +161,7 @@ fun WorkoutMusicBar(
                 onClick = { showPlaylistDialog = true },
                 modifier = Modifier.size(32.dp)
             ) {
-                Icon(Icons.Default.QueueMusic, contentDescription = "Playlist", tint = ElectricCyan, modifier = Modifier.size(19.dp))
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Music Options", tint = ElectricCyan, modifier = Modifier.size(19.dp))
             }
         }
     }
@@ -146,7 +171,7 @@ fun WorkoutMusicBar(
             GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.78f),
+                    .fillMaxHeight(0.84f),
                 borderColor = NeonGreen.copy(alpha = 0.35f)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -157,10 +182,85 @@ fun WorkoutMusicBar(
                     ) {
                         Column {
                             Text("WORKOUT SOUNDTRACK", color = NeonGreen, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                            Text("Beats & Phone Music", color = TextPrimary, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                            Text("Music & Streaming", color = TextPrimary, fontWeight = FontWeight.Black, fontSize = 18.sp)
                         }
                         IconButton(onClick = { showPlaylistDialog = false }) {
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // External Music Apps Quick-Launch (Amazon Music, Spotify, YT Music)
+                    Text("Stream From Your Music App", color = ElectricCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                WorkoutMusicPlayer.openExternalMusicApp(
+                                    context,
+                                    "com.amazon.mp3",
+                                    "https://music.amazon.in"
+                                )
+                            },
+                            modifier = Modifier.weight(1.2f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan, contentColor = Color.Black),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Headphones, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Amazon Music", fontWeight = FontWeight.Black, fontSize = 12.sp, maxLines = 1)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                WorkoutMusicPlayer.openExternalMusicApp(
+                                    context,
+                                    "com.spotify.music",
+                                    "https://open.spotify.com"
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GymDarkBorder),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                        ) {
+                            Text("Spotify", color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Mode Toggle Pill: FitPanda Player vs External App Controls
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(GymDarkCard, RoundedCornerShape(12.dp))
+                            .padding(4.dp)
+                    ) {
+                        listOf("FitPanda Beats / MP3" to false, "External App Control" to true).forEach { (label, isExt) ->
+                            val sel = externalMode == isExt
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { WorkoutMusicPlayer.setExternalMode(isExt) },
+                                shape = RoundedCornerShape(9.dp),
+                                color = if (sel) (if (isExt) ElectricCyan else NeonGreen) else Color.Transparent
+                            ) {
+                                Box(modifier = Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = label,
+                                        color = if (sel) Color.Black else TextSecondary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -198,14 +298,14 @@ fun WorkoutMusicBar(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Volume Slider
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.VolumeUp, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Slider(
                             value = volume,
@@ -222,7 +322,7 @@ fun WorkoutMusicBar(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
-                            val isCurrent = index == currentIndex
+                            val isCurrent = !externalMode && index == currentIndex
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -233,7 +333,10 @@ fun WorkoutMusicBar(
                                         if (isCurrent) NeonGreen else GymDarkBorder,
                                         RoundedCornerShape(14.dp)
                                     )
-                                    .clickable { WorkoutMusicPlayer.playTrack(index) }
+                                    .clickable {
+                                        WorkoutMusicPlayer.setExternalMode(false)
+                                        WorkoutMusicPlayer.playTrack(index)
+                                    }
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
